@@ -75,7 +75,7 @@ class BotControllerBinding(
 
     private fun invokeHandler(uuid: UUID, handler: Handler, update: Update, principal: Principal?) {
         if (telegramBotConfiguration.onAuthorizedAccess(update, principal, this)) {
-            handler.invoke(update, principal, this)
+            handler.invoke(uuid, update, principal, this)
         } else {
             logger.info("$uuid: skipping processing due to onAuthorizedAccess result")
         }
@@ -85,8 +85,9 @@ class BotControllerBinding(
         return super.execute(method)
     }
 
-    fun processResponse(message: Message, result: Any?, linked: Boolean) {
+    fun processResponse(uuid: UUID, message: Message, result: Any?, linked: Boolean) {
         result?.takeUnless { it is Unit }?.let {
+            logger.info("$uuid: sending response: $it")
             val response = when (it) {
                 is BotApiMethod<*> -> it
                 is Keyboard -> {

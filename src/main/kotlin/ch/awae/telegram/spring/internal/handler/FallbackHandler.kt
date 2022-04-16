@@ -5,6 +5,7 @@ import ch.awae.telegram.spring.api.Principal
 import ch.awae.telegram.spring.internal.BotControllerBinding
 import ch.awae.telegram.spring.internal.param.*
 import org.telegram.telegrambots.meta.api.objects.Update
+import java.util.UUID
 import kotlin.reflect.KFunction
 
 class FallbackHandler(
@@ -21,7 +22,7 @@ class FallbackHandler(
 
     override fun isApplicable(update: Update): Boolean = true
 
-    override fun invoke(update: Update, principal: Principal?, binding: BotControllerBinding) {
+    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding) {
         val parameters = mutableListOf<Any?>(bean)
         val valueParameters = parameterMapping.map {
             when (it) {
