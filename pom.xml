@@ -9,10 +9,10 @@
     </parent>
     <groupId>ch.awae</groupId>
     <artifactId>spring-boot-telegram</artifactId>
-    <version>0.2.0</version>
+    <version>0.2.5</version>
     <name>spring-boot-telegram</name>
     <description>spring-boot-telegram</description>
-    <properties>
+    <properties>  
         <java.version>11</java.version>
         <telegram.version>5.7.1</telegram.version>
     </properties>

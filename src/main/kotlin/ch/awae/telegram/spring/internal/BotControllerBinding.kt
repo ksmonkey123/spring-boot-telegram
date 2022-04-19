@@ -1,9 +1,6 @@
 package ch.awae.telegram.spring.internal
 
-import ch.awae.telegram.spring.api.BotCredentials
-import ch.awae.telegram.spring.api.Keyboard
-import ch.awae.telegram.spring.api.Principal
-import ch.awae.telegram.spring.api.TelegramBotConfiguration
+import ch.awae.telegram.spring.api.*
 import ch.awae.telegram.spring.internal.handler.FallbackHandler
 import ch.awae.telegram.spring.internal.handler.Handler
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -20,7 +17,7 @@ import java.util.logging.Logger
 import kotlin.reflect.jvm.jvmName
 
 class BotControllerBinding(
-        private val configuration: BotCredentials,
+        private val configuration: IBotCredentials,
         private val handlers: List<Handler>,
         private val fallbackHandler: FallbackHandler?,
         private val telegramBotConfiguration: TelegramBotConfiguration,
@@ -91,7 +88,12 @@ class BotControllerBinding(
             val response = when (it) {
                 is BotApiMethod<*> -> it
                 is Keyboard -> {
-                    SendMessage(message.chatId.toString(), it.message).apply { replyMarkup = it.buildMarkup() }
+                    SendMessage(message.chatId.toString(), it.message).apply {
+                        replyMarkup = it.buildMarkup()
+                        if (linked) {
+                            replyToMessageId = message.messageId
+                        }
+                    }
                 }
                 else -> {
                     SendMessage(message.chatId.toString(), it.toString()).apply {

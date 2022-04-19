@@ -1,9 +1,8 @@
 package ch.awae.telegram.spring.internal
 
 import ch.awae.telegram.spring.annotation.*
-import ch.awae.telegram.spring.api.BotCredentials
+import ch.awae.telegram.spring.api.IBotCredentials
 import ch.awae.telegram.spring.api.Principal
-import ch.awae.telegram.spring.api.SenderRegistry
 import ch.awae.telegram.spring.api.TelegramBotConfiguration
 import ch.awae.telegram.spring.internal.handler.CallbackHandler
 import ch.awae.telegram.spring.internal.handler.FallbackHandler
@@ -18,12 +17,14 @@ import org.telegram.telegrambots.meta.TelegramBotsApi
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
-import org.telegram.telegrambots.meta.bots.AbsSender
 import java.util.logging.Logger
 import javax.annotation.PostConstruct
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
-import kotlin.reflect.full.*
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.functions
+import kotlin.reflect.full.isSubtypeOf
+import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.jvmName
 import kotlin.reflect.typeOf
 
@@ -31,14 +32,11 @@ import kotlin.reflect.typeOf
 class BotControllerBinder(
         val botsApi: TelegramBotsApi,
         val telegramBotConfiguration: TelegramBotConfiguration,
+        val senderRegistry: MapBasedSenderRegistry,
         val appContext: ApplicationContext,
-) : SenderRegistry {
+) {
 
     private val logger = Logger.getLogger(BotControllerBinder::class.jvmName)
-
-    private lateinit var botMap : Map<String, AbsSender>
-
-    override fun get(botName: String): AbsSender = botMap.getValue(botName)
 
     @PostConstruct
     fun initBots() {
@@ -52,7 +50,7 @@ class BotControllerBinder(
             logger.info("registered bot '${botName}' with Telegram API")
         }
 
-        botMap = bindings
+        senderRegistry.botMap = bindings
 
         logger.info("=========================================")
         logger.info("finished binding Telegram Bot Controllers")
@@ -61,11 +59,6 @@ class BotControllerBinder(
     }
 
     private fun getBindings(): Map<String, BotControllerBinding> {
-       // val credentials = botCredentials.associateBy { it.botName }
-
-       // logger.info("loaded ${credentials.size} bot credentials(s):")
-        //credentials.keys.forEach { logger.info(" - $it") }
-
         val bots = appContext.getBeansWithAnnotation<BotController>()
                 .map { (beanName, bean) ->
                     val annotation = appContext.findAnnotationOnBean<BotController>(beanName)
@@ -86,7 +79,7 @@ class BotControllerBinder(
             getBinding(botName, telegramBotConfiguration.getBotCredentials(botName), beans) }
     }
 
-    private fun getBinding(botName: String, config: BotCredentials, beans: List<Any>): BotControllerBinding {
+    private fun getBinding(botName: String, config: IBotCredentials, beans: List<Any>): BotControllerBinding {
         val allHandlers = beans.flatMap { getHandlersForBean(it) }
 
         logger.info("loaded ${allHandlers.size} handlers(s) for bot '${botName}':")
@@ -176,12 +169,9 @@ class BotControllerBinder(
                 typeOf<CallbackQuery?>() -> RawCallback
                 else -> throw InitializationException("could not determine parameter mapping for parameter $param")
             }
-            is User -> when {
-                type.isSubtypeOf(typeOf<Principal?>()) -> TypedPrincipal(type)
-                else -> throw InitializationException("unsupported type for parameter $param annotated with @User")
-            }
             null -> when {
                 type.isSubtypeOf(typeOf<String?>()) && name != null -> NamedGroup(name)
+                type.isSubtypeOf(typeOf<Principal?>()) -> TypedPrincipal(type)
                 else -> throw InitializationException("could not determine parameter mapping for parameter $param")
             }
             else -> throw InitializationException("could not determine parameter mapping for parameter $param")

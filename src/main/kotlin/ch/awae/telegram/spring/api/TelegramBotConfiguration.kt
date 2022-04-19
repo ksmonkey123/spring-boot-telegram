@@ -6,7 +6,6 @@ import org.springframework.context.annotation.ComponentScan
 import org.telegram.telegrambots.meta.TelegramBotsApi
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.bots.AbsSender
-import org.telegram.telegrambots.meta.generics.LongPollingBot
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
 
 @ComponentScan("ch.awae.telegram.spring")
@@ -15,7 +14,7 @@ abstract class TelegramBotConfiguration {
     @Bean
     open fun getApi() = TelegramBotsApi(DefaultBotSession::class.java)
 
-    abstract fun getBotCredentials(botName: String) : BotCredentials
+    abstract fun getBotCredentials(botName: String) : IBotCredentials
 
     open fun resolvePrincipal(userId: Long) : Principal = AnonymousPrincipal(userId)
 
