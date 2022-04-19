@@ -4,4 +4,4 @@ import org.springframework.stereotype.Component
 
 @Component
 @Target(AnnotationTarget.CLASS)
-annotation class BotController(val name: String)
+annotation class BotController(val name: String = "")

@@ -20,7 +20,7 @@ import java.util.logging.Logger
 import kotlin.reflect.jvm.jvmName
 
 class BotControllerBinding(
-        val configuration: BotCredentials,
+        private val configuration: BotCredentials,
         private val handlers: List<Handler>,
         private val fallbackHandler: FallbackHandler?,
         private val telegramBotConfiguration: TelegramBotConfiguration,

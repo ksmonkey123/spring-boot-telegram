@@ -3,6 +3,7 @@ package ch.awae.telegram.spring.internal
 import ch.awae.telegram.spring.annotation.*
 import ch.awae.telegram.spring.api.BotCredentials
 import ch.awae.telegram.spring.api.Principal
+import ch.awae.telegram.spring.api.SenderRegistry
 import ch.awae.telegram.spring.api.TelegramBotConfiguration
 import ch.awae.telegram.spring.internal.handler.CallbackHandler
 import ch.awae.telegram.spring.internal.handler.FallbackHandler
@@ -17,6 +18,7 @@ import org.telegram.telegrambots.meta.TelegramBotsApi
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.bots.AbsSender
 import java.util.logging.Logger
 import javax.annotation.PostConstruct
 import kotlin.reflect.KFunction
@@ -28,12 +30,15 @@ import kotlin.reflect.typeOf
 @Configuration
 class BotControllerBinder(
         val botsApi: TelegramBotsApi,
-        val appContext: ApplicationContext,
-        val botCredentials: List<BotCredentials>,
         val telegramBotConfiguration: TelegramBotConfiguration,
-) {
+        val appContext: ApplicationContext,
+) : SenderRegistry {
 
     private val logger = Logger.getLogger(BotControllerBinder::class.jvmName)
+
+    private lateinit var botMap : Map<String, AbsSender>
+
+    override fun get(botName: String): AbsSender = botMap.getValue(botName)
 
     @PostConstruct
     fun initBots() {
@@ -42,10 +47,12 @@ class BotControllerBinder(
         logger.info("=========================================")
 
         val bindings = getBindings()
-        bindings.forEach {
-            botsApi.registerBot(it)
-            logger.info("registered bot '${it.configuration.botName}' with Telegram API")
+        bindings.forEach {(botName, bot) ->
+            botsApi.registerBot(bot)
+            logger.info("registered bot '${botName}' with Telegram API")
         }
+
+        botMap = bindings
 
         logger.info("=========================================")
         logger.info("finished binding Telegram Bot Controllers")
@@ -53,37 +60,36 @@ class BotControllerBinder(
 
     }
 
-    private fun getBindings(): List<BotControllerBinding> {
-        val credentials = botCredentials.associateBy { it.botName }
+    private fun getBindings(): Map<String, BotControllerBinding> {
+       // val credentials = botCredentials.associateBy { it.botName }
 
-        logger.info("loaded ${credentials.size} bot credentials(s):")
-        credentials.keys.forEach { logger.info(" - $it") }
+       // logger.info("loaded ${credentials.size} bot credentials(s):")
+        //credentials.keys.forEach { logger.info(" - $it") }
 
         val bots = appContext.getBeansWithAnnotation<BotController>()
                 .map { (beanName, bean) ->
                     val annotation = appContext.findAnnotationOnBean<BotController>(beanName)
                             ?: throw InitializationException("could not find @BotController annotation on bean '$beanName'")
-                    val configuration = credentials[annotation.name]
-                            ?: throw InitializationException("missing BotCredentials for bot '${annotation.name}'")
-                    Pair(configuration, bean)
+                    Pair(annotation.name, bean)
                 }
                 .groupBy({ it.first }, { it.second })
 
         logger.info("loaded ${bots.values.flatten().size} controller(s):")
-        bots.forEach { (config, controllers) ->
-            logger.info(" - ${config.botName}:")
+        bots.forEach { (botName, controllers) ->
+            logger.info(" - $botName:")
             controllers.forEach {
                 logger.info("    - ${it::class.java.name}")
             }
         }
 
-        return bots.map { (config, beans) -> getBinding(config, beans) }
+        return bots.mapValues { (botName, beans) ->
+            getBinding(botName, telegramBotConfiguration.getBotCredentials(botName), beans) }
     }
 
-    private fun getBinding(config: BotCredentials, beans: List<Any>): BotControllerBinding {
+    private fun getBinding(botName: String, config: BotCredentials, beans: List<Any>): BotControllerBinding {
         val allHandlers = beans.flatMap { getHandlersForBean(it) }
 
-        logger.info("loaded ${allHandlers.size} handlers(s) for bot '${config.botName}':")
+        logger.info("loaded ${allHandlers.size} handlers(s) for bot '${botName}':")
         allHandlers.forEach {
             logger.info(" - $it")
         }
@@ -92,7 +98,7 @@ class BotControllerBinder(
         val fallbackHandlers = allHandlers.filterIsInstance<FallbackHandler>()
 
         if (fallbackHandlers.size > 1) {
-            throw InitializationException("multiple fallback handlers found for bot '${config.botName}'! each bot may only have one fallback handler")
+            throw InitializationException("multiple fallback handlers found for bot '${botName}'! each bot may only have one fallback handler")
         }
         return BotControllerBinding(config, normalHandlers, fallbackHandlers.firstOrNull(), telegramBotConfiguration)
     }

@@ -15,6 +15,8 @@ abstract class TelegramBotConfiguration {
     @Bean
     open fun getApi() = TelegramBotsApi(DefaultBotSession::class.java)
 
+    abstract fun getBotCredentials(botName: String) : BotCredentials
+
     open fun resolvePrincipal(userId: Long) : Principal = AnonymousPrincipal(userId)
 
     /** called whenever an authorization error occurs - i.e. no authorized handler was found for an update */
