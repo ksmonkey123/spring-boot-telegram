@@ -1,12 +1,15 @@
-package ch.awae.telegram.spring.annotation
+package ch.awae.telegram.spring.annotation.mapping
 
+/**
+ * Marks a method of a BotController to be invoked for incoming messages.
+ */
 @Target(AnnotationTarget.FUNCTION)
 @Repeatable
-annotation class OnCallback(
+annotation class OnMessage(
         /**
-         * Regular Expression that must match the data field of the callback
+         * Regular Expression that must match the text of the message.
          *
-         * Indexed and named groups can be used to extract parts of the data. These
+         * Indexed and named groups can be used to extract parts of the message. These
          * can be passed to the function through String parameters with the @Group annotation.
          * Additionally, String parameters without any annotation are bound to a named group
          * with the same name as the parameter.
@@ -16,10 +19,11 @@ annotation class OnCallback(
         val pattern: String,
 
         /**
-         * by default, inline keyboards are removed once an answer has been given.
-         * set this to 'true' in order to suppress this behaviour.
+         * set to 'true' if the result of the method should be sent as a marked response to the incoming message.
+         * only applicable for result types that have custom serialization logic (e.g. String or Keyboard).
+         * If a raw BotApiMessage is returned, this flag is ignored.
          */
-        val keepKeyboard: Boolean = false,
+        val linkResponse: Boolean = false,
 
         /**
          * handler selection priority (lower number means higher priority). default: 0

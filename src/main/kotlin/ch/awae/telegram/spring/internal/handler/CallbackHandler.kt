@@ -1,7 +1,7 @@
 package ch.awae.telegram.spring.internal.handler
 
 import ch.awae.telegram.spring.annotation.Authorized
-import ch.awae.telegram.spring.annotation.OnCallback
+import ch.awae.telegram.spring.annotation.mapping.OnCallback
 import ch.awae.telegram.spring.api.Principal
 import ch.awae.telegram.spring.internal.BotControllerBinding
 import ch.awae.telegram.spring.internal.param.*

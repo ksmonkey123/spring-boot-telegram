@@ -1,4 +1,4 @@
-package ch.awae.telegram.spring.annotation
+package ch.awae.telegram.spring.annotation.param
 
 /**
  * Marks a BotController function parameter as a raw incoming message type.

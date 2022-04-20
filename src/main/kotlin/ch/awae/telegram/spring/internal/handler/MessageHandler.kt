@@ -1,7 +1,7 @@
 package ch.awae.telegram.spring.internal.handler
 
 import ch.awae.telegram.spring.annotation.Authorized
-import ch.awae.telegram.spring.annotation.OnMessage
+import ch.awae.telegram.spring.annotation.mapping.OnMessage
 import ch.awae.telegram.spring.api.Principal
 import ch.awae.telegram.spring.internal.BotControllerBinding
 import ch.awae.telegram.spring.internal.param.*
@@ -10,13 +10,13 @@ import java.util.UUID
 import kotlin.reflect.KFunction
 
 class MessageHandler(
-        private val bean: Any,
-        private val regex: Regex,
-        private val function: KFunction<*>,
-        private val parameterMapping: List<ParameterMapping>,
-        private val annotation: OnMessage,
-        override val classLevelAuth: Authorized?,
-        override val functionLevelAuth: Authorized?,
+    private val bean: Any,
+    private val regex: Regex,
+    private val function: KFunction<*>,
+    private val parameterMapping: List<ParameterMapping>,
+    private val annotation: OnMessage,
+    override val classLevelAuth: Authorized?,
+    override val functionLevelAuth: Authorized?,
 ) : Handler {
 
     override val priority: Int

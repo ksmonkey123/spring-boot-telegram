@@ -1,6 +1,12 @@
 package ch.awae.telegram.spring.internal
 
 import ch.awae.telegram.spring.annotation.*
+import ch.awae.telegram.spring.annotation.mapping.FallbackMapping
+import ch.awae.telegram.spring.annotation.mapping.OnCallback
+import ch.awae.telegram.spring.annotation.mapping.OnMessage
+import ch.awae.telegram.spring.annotation.param.Group
+import ch.awae.telegram.spring.annotation.param.Raw
+import ch.awae.telegram.spring.annotation.param.Text
 import ch.awae.telegram.spring.api.IBotCredentials
 import ch.awae.telegram.spring.api.Principal
 import ch.awae.telegram.spring.api.TelegramBotConfiguration
@@ -30,10 +36,10 @@ import kotlin.reflect.typeOf
 
 @Configuration
 class BotControllerBinder(
-        val botsApi: TelegramBotsApi,
-        val telegramBotConfiguration: TelegramBotConfiguration,
-        val senderRegistry: MapBasedSenderRegistry,
-        val appContext: ApplicationContext,
+    val botsApi: TelegramBotsApi,
+    val telegramBotConfiguration: TelegramBotConfiguration,
+    val senderRegistry: MapBasedSenderRegistry,
+    val appContext: ApplicationContext,
 ) {
 
     private val logger = Logger.getLogger(BotControllerBinder::class.jvmName)
@@ -45,7 +51,7 @@ class BotControllerBinder(
         logger.info("=========================================")
 
         val bindings = getBindings()
-        bindings.forEach {(botName, bot) ->
+        bindings.forEach { (botName, bot) ->
             botsApi.registerBot(bot)
             logger.info("registered bot '${botName}' with Telegram API")
         }
@@ -60,12 +66,12 @@ class BotControllerBinder(
 
     private fun getBindings(): Map<String, BotControllerBinding> {
         val bots = appContext.getBeansWithAnnotation<BotController>()
-                .map { (beanName, bean) ->
-                    val annotation = appContext.findAnnotationOnBean<BotController>(beanName)
-                            ?: throw InitializationException("could not find @BotController annotation on bean '$beanName'")
-                    Pair(annotation.name, bean)
-                }
-                .groupBy({ it.first }, { it.second })
+            .map { (beanName, bean) ->
+                val annotation = appContext.findAnnotationOnBean<BotController>(beanName)
+                    ?: throw InitializationException("could not find @BotController annotation on bean '$beanName'")
+                Pair(annotation.name, bean)
+            }
+            .groupBy({ it.first }, { it.second })
 
         logger.info("loaded ${bots.values.flatten().size} controller(s):")
         bots.forEach { (botName, controllers) ->
@@ -76,7 +82,8 @@ class BotControllerBinder(
         }
 
         return bots.mapValues { (botName, beans) ->
-            getBinding(botName, telegramBotConfiguration.getBotCredentials(botName), beans) }
+            getBinding(botName, telegramBotConfiguration.getBotCredentials(botName), beans)
+        }
     }
 
     private fun getBinding(botName: String, config: IBotCredentials, beans: List<Any>): BotControllerBinding {
@@ -101,43 +108,52 @@ class BotControllerBinder(
         return (bean::class).functions.flatMap { getHandlersForFunction(bean, beanAuthAnnotation, it) }
     }
 
-    private fun getHandlersForFunction(bean: Any, beanAuthAnnotation : Authorized?, function: KFunction<*>): List<Handler> {
+    private fun getHandlersForFunction(
+        bean: Any,
+        beanAuthAnnotation: Authorized?,
+        function: KFunction<*>
+    ): List<Handler> {
         return function.annotations.mapNotNull {
             buildHandler(bean, beanAuthAnnotation, function, it)
         }
     }
 
-    private fun buildHandler(bean: Any, beanAuthAnnotation: Authorized?, function: KFunction<*>, annotation: Annotation): Handler? {
+    private fun buildHandler(
+        bean: Any,
+        beanAuthAnnotation: Authorized?,
+        function: KFunction<*>,
+        annotation: Annotation
+    ): Handler? {
         val authAnnotation = function.findAnnotation<Authorized>()
         return when (annotation) {
             is OnMessage ->
                 MessageHandler(
-                        bean,
-                        Regex(annotation.pattern),
-                        function,
-                        getFunctionParamMappings(function, annotation),
-                        annotation,
-                        beanAuthAnnotation,
-                        authAnnotation
+                    bean,
+                    Regex(annotation.pattern),
+                    function,
+                    getFunctionParamMappings(function, annotation),
+                    annotation,
+                    beanAuthAnnotation,
+                    authAnnotation
                 )
             is OnCallback ->
                 CallbackHandler(
-                        bean,
-                        Regex(annotation.pattern),
-                        function,
-                        getFunctionParamMappings(function, annotation),
-                        annotation,
-                        beanAuthAnnotation,
-                        authAnnotation
+                    bean,
+                    Regex(annotation.pattern),
+                    function,
+                    getFunctionParamMappings(function, annotation),
+                    annotation,
+                    beanAuthAnnotation,
+                    authAnnotation
                 )
             is FallbackMapping -> {
                 if (function.returnType.isSubtypeOf(typeOf<Unit>()))
                     FallbackHandler(
-                            bean,
-                            function,
-                            getFunctionParamMappings(function, annotation),
-                            beanAuthAnnotation,
-                            authAnnotation
+                        bean,
+                        function,
+                        getFunctionParamMappings(function, annotation),
+                        beanAuthAnnotation,
+                        authAnnotation
                     )
                 else
                     throw InitializationException("function annotated with @FallbackMapping must have return Type kotlin.Unit (void)")
@@ -148,33 +164,7 @@ class BotControllerBinder(
 
     private fun getFunctionParamMappings(function: KFunction<*>, annotation: Annotation): List<ParameterMapping> {
         return function.valueParameters.map {
-            getParameterMapping(it, annotation)
-        }
-    }
-
-    private fun getParameterMapping(param: KParameter, mappingAnnotation: Annotation): ParameterMapping {
-        val name = param.name
-        val type = param.type
-
-        return when (val annotation = param.annotations.firstOrNull()) {
-            is Group -> if (annotation.name.isNotEmpty()) NamedGroup(annotation.name) else IndexedGroup(annotation.id)
-            is Raw -> when (type) {
-                // nonnull raw parameters are not always allowed
-                typeOf<Update>() -> RawUpdate
-                typeOf<Message>() -> if (mappingAnnotation is OnMessage) RawMessage else throw InitializationException("no raw message available")
-                typeOf<CallbackQuery>() -> if (mappingAnnotation is OnCallback) RawCallback else throw InitializationException("no raw callbackQuery available")
-                // optional raw parameters are always allowed
-                typeOf<Update?>() -> RawUpdate
-                typeOf<Message?>() -> RawMessage
-                typeOf<CallbackQuery?>() -> RawCallback
-                else -> throw InitializationException("could not determine parameter mapping for parameter $param")
-            }
-            null -> when {
-                type.isSubtypeOf(typeOf<String?>()) && name != null -> NamedGroup(name)
-                type.isSubtypeOf(typeOf<Principal?>()) -> TypedPrincipal(type)
-                else -> throw InitializationException("could not determine parameter mapping for parameter $param")
-            }
-            else -> throw InitializationException("could not determine parameter mapping for parameter $param")
+            ParameterMapper.getParameterMapping(it, annotation)
         }
     }
 
