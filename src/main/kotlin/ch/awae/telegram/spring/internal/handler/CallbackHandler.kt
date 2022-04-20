@@ -4,6 +4,7 @@ import ch.awae.telegram.spring.annotation.Authorized
 import ch.awae.telegram.spring.annotation.mapping.OnCallback
 import ch.awae.telegram.spring.api.Principal
 import ch.awae.telegram.spring.internal.BotControllerBinding
+import ch.awae.telegram.spring.internal.ParameterMapper
 import ch.awae.telegram.spring.internal.param.*
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.objects.Update
@@ -33,21 +34,8 @@ class CallbackHandler(
     override fun isApplicable(update: Update): Boolean = matchText(update) != null
 
     override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding) {
-        val match = matchText(update)!!
 
-        val parameters = mutableListOf<Any?>(bean)
-        val valueParameters = parameterMapping.map {
-            when (it) {
-                is IndexedGroup -> runCatching { match.groups[it.index]?.value }.getOrNull()
-                is NamedGroup -> runCatching { match.groups[it.name]?.value }.getOrNull()
-                is RawUpdate -> update
-                is RawMessage -> null
-                is RawCallback -> update.callbackQuery
-                is TypedPrincipal -> it.filterType(principal)
-            }
-        }
-
-        parameters.addAll(valueParameters)
+        val parameters = ParameterMapper.buildParameterList(parameterMapping, bean, principal, update, matchText(update))
         val result = function.call(*parameters.toTypedArray())
 
         if (!annotation.keepKeyboard) {
@@ -61,7 +49,7 @@ class CallbackHandler(
             )
         }
 
-        binding.processResponse(uuid, update.callbackQuery.message, result, false)
+        binding.processResponse(uuid, update, result, false)
     }
 
 }

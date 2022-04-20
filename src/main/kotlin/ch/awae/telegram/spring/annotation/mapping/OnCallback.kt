@@ -1,5 +1,8 @@
 package ch.awae.telegram.spring.annotation.mapping
 
+/**
+ * Marks a method of a BotController to be invoked for incoming callbackQueries.
+ */
 @Target(AnnotationTarget.FUNCTION)
 @Repeatable
 annotation class OnCallback(

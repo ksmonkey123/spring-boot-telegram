@@ -147,16 +147,14 @@ class BotControllerBinder(
                     authAnnotation
                 )
             is FallbackMapping -> {
-                if (function.returnType.isSubtypeOf(typeOf<Unit>()))
-                    FallbackHandler(
-                        bean,
-                        function,
-                        getFunctionParamMappings(function, annotation),
-                        beanAuthAnnotation,
-                        authAnnotation
-                    )
-                else
-                    throw InitializationException("function annotated with @FallbackMapping must have return Type kotlin.Unit (void)")
+                FallbackHandler(
+                    bean,
+                    function,
+                    getFunctionParamMappings(function, annotation),
+                    annotation,
+                    beanAuthAnnotation,
+                    authAnnotation
+                )
             }
             else -> null
         }

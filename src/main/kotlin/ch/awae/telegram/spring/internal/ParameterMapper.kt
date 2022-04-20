@@ -60,5 +60,28 @@ object ParameterMapper {
             throw InitializationException("invalid @Group annotation: name must be non-empty or index >= 0")
     }
 
+    fun buildParameterList(
+        parameterMapping: List<ParameterMapping>,
+        bean: Any, // the @BotController bean
+        principal: Principal?, // the user principal
+        update: Update, // the raw Update object. message and callbackQuery are extracted from this
+        match: MatchResult?, // the match result where regex groups should be extracted from
+    ) : List<Any?> {
+
+        val parameters = mutableListOf<Any?>(bean)
+        val valueParameters = parameterMapping.map {
+            when (it) {
+                is IndexedGroup -> runCatching { match?.groups?.get(it.index)?.value }.getOrNull()
+                is NamedGroup -> runCatching { match?.groups?.get(it.name)?.value }.getOrNull()
+                is RawUpdate -> update
+                is RawMessage -> update.message
+                is RawCallback -> update.callbackQuery
+                is TypedPrincipal -> it.filterType(principal)
+            }
+        }
+
+        parameters.addAll(valueParameters)
+        return parameters
+    }
 
 }
