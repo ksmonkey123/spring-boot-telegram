@@ -16,7 +16,7 @@ abstract class TelegramBotConfiguration {
 
     abstract fun getBotCredentials(botName: String) : IBotCredentials
 
-    open fun resolvePrincipal(userId: Long) : Principal = AnonymousPrincipal(userId)
+    open fun resolvePrincipal(userId: Long) : Principal? = AnonymousPrincipal(userId)
 
     /** called whenever an authorization error occurs - i.e. no authorized handler was found for an update */
     open fun onUnauthorizedAccess(update: Update, principal: Principal?, bot: AbsSender) {}

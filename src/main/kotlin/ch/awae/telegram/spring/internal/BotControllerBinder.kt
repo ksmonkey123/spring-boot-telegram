@@ -1,38 +1,30 @@
 package ch.awae.telegram.spring.internal
 
-import ch.awae.telegram.spring.annotation.*
+import ch.awae.telegram.spring.annotation.Authorized
+import ch.awae.telegram.spring.annotation.BotController
 import ch.awae.telegram.spring.annotation.mapping.FallbackMapping
 import ch.awae.telegram.spring.annotation.mapping.OnCallback
 import ch.awae.telegram.spring.annotation.mapping.OnMessage
-import ch.awae.telegram.spring.annotation.param.Group
-import ch.awae.telegram.spring.annotation.param.Raw
-import ch.awae.telegram.spring.annotation.param.Text
 import ch.awae.telegram.spring.api.IBotCredentials
-import ch.awae.telegram.spring.api.Principal
 import ch.awae.telegram.spring.api.TelegramBotConfiguration
 import ch.awae.telegram.spring.internal.handler.CallbackHandler
 import ch.awae.telegram.spring.internal.handler.FallbackHandler
 import ch.awae.telegram.spring.internal.handler.Handler
 import ch.awae.telegram.spring.internal.handler.MessageHandler
-import ch.awae.telegram.spring.internal.param.*
+import ch.awae.telegram.spring.internal.param.ParameterMapping
 import org.springframework.beans.factory.findAnnotationOnBean
 import org.springframework.beans.factory.getBeansWithAnnotation
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Configuration
 import org.telegram.telegrambots.meta.TelegramBotsApi
-import org.telegram.telegrambots.meta.api.objects.CallbackQuery
-import org.telegram.telegrambots.meta.api.objects.Message
-import org.telegram.telegrambots.meta.api.objects.Update
 import java.util.logging.Logger
 import javax.annotation.PostConstruct
 import kotlin.reflect.KFunction
-import kotlin.reflect.KParameter
+import kotlin.reflect.full.allSuperclasses
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.functions
-import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.jvmName
-import kotlin.reflect.typeOf
 
 @Configuration
 class BotControllerBinder(
@@ -53,7 +45,7 @@ class BotControllerBinder(
         val bindings = getBindings()
         bindings.forEach { (botName, bot) ->
             botsApi.registerBot(bot)
-            logger.info("registered bot '${botName}' with Telegram API")
+            logger.info("registered bot '${printableName(botName)}' with Telegram API")
         }
 
         senderRegistry.botMap = bindings
@@ -75,7 +67,7 @@ class BotControllerBinder(
 
         logger.info("loaded ${bots.values.flatten().size} controller(s):")
         bots.forEach { (botName, controllers) ->
-            logger.info(" - $botName:")
+            logger.info(" - ${printableName(botName)}:")
             controllers.forEach {
                 logger.info("    - ${it::class.java.name}")
             }
@@ -89,7 +81,7 @@ class BotControllerBinder(
     private fun getBinding(botName: String, config: IBotCredentials, beans: List<Any>): BotControllerBinding {
         val allHandlers = beans.flatMap { getHandlersForBean(it) }
 
-        logger.info("loaded ${allHandlers.size} handlers(s) for bot '${botName}':")
+        logger.info("loaded ${allHandlers.size} handlers(s) for bot '${printableName(botName)}':")
         allHandlers.forEach {
             logger.info(" - $it")
         }
@@ -98,15 +90,20 @@ class BotControllerBinder(
         val fallbackHandlers = allHandlers.filterIsInstance<FallbackHandler>()
 
         if (fallbackHandlers.size > 1) {
-            throw InitializationException("multiple fallback handlers found for bot '${botName}'! each bot may only have one fallback handler")
+            throw InitializationException("multiple fallback handlers found for bot '${printableName(botName)}'! each bot may only have one fallback handler")
         }
         return BotControllerBinding(config, normalHandlers, fallbackHandlers.firstOrNull(), telegramBotConfiguration)
     }
 
     fun getHandlersForBean(bean: Any): List<Handler> {
         val beanAuthAnnotation = bean::class.findAnnotation<Authorized>()
-        return (bean::class).functions.flatMap { getHandlersForFunction(bean, beanAuthAnnotation, it) }
+
+        val classes = listOf(bean::class) + bean::class.allSuperclasses
+
+        return classes.flatMap { it.functions }.flatMap { getHandlersForFunction(bean, beanAuthAnnotation, it) }
     }
+
+    private fun printableName(botName: String) : String = botName.ifEmpty { "[default]" }
 
     private fun getHandlersForFunction(
         bean: Any,
