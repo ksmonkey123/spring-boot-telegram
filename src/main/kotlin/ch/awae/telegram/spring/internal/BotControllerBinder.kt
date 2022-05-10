@@ -96,14 +96,14 @@ class BotControllerBinder(
     }
 
     fun getHandlersForBean(bean: Any): List<Handler> {
-        val beanAuthAnnotation = bean::class.findAnnotation<Authorized>()
-
         val classes = listOf(bean::class) + bean::class.allSuperclasses
-
-        return classes.flatMap { it.functions }.flatMap { getHandlersForFunction(bean, beanAuthAnnotation, it) }
+        return classes.flatMap {
+            val classAuth = it.findAnnotation<Authorized>()
+            it.functions.map { it to classAuth }
+        }.flatMap { (function, classAuth) -> getHandlersForFunction(bean, classAuth, function) }
     }
 
-    private fun printableName(botName: String) : String = botName.ifEmpty { "[default]" }
+    private fun printableName(botName: String): String = botName.ifEmpty { "[default]" }
 
     private fun getHandlersForFunction(
         bean: Any,

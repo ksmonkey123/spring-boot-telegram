@@ -51,7 +51,7 @@ class BotControllerBinding(
 
             if (authorizedCandidates.isEmpty() && candidates.isNotEmpty()) {
                 logger.warning("$uuid: unauthorized access matching one of the following handlers:")
-                authorizedCandidates.forEach { logger.warning("$uuid: - $it") }
+                candidates.forEach { logger.warning("$uuid: - $it") }
                 telegramBotConfiguration.onUnauthorizedAccess(update, principal, this)
             } else if (authorizedCandidates.isNotEmpty()) {
                 invokeHandler(uuid, authorizedCandidates.first(), update, principal)
