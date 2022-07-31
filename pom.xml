@@ -5,18 +5,19 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.6.6</version>
+        <version>2.7.2</version>
     </parent>
 
     <groupId>ch.awae</groupId>
     <artifactId>spring-boot-telegram</artifactId>
-    <version>0.3.4</version>
+    <version>0.4.0</version>
 
     <name>spring-boot-telegram</name>
     <description>spring-boot-telegram</description>
     <properties>
         <java.version>11</java.version>
-        <telegram.version>5.7.1</telegram.version>
+        <telegram.version>6.1.0</telegram.version>
+        <kotlin.version>1.7.10</kotlin.version>
     </properties>
     <dependencies>
         <dependency>

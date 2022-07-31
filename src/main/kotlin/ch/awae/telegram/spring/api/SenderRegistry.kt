@@ -7,7 +7,8 @@ interface SenderRegistry {
     /**
      * get sender with default bot name (empty string)
      */
-    fun getDefault() = get("")
+    val default : AbsSender
+        get() = this[""]
 
     /**
      * get sender with given botName.

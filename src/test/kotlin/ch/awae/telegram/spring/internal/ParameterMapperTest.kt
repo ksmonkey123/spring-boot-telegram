@@ -7,6 +7,7 @@ import ch.awae.telegram.spring.annotation.param.Group
 import ch.awae.telegram.spring.annotation.param.Raw
 import ch.awae.telegram.spring.annotation.param.Text
 import ch.awae.telegram.spring.api.Principal
+import ch.awae.telegram.spring.api.UpdateContext
 import ch.awae.telegram.spring.internal.param.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail
@@ -17,6 +18,7 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.util.stream.Stream
+import javax.security.auth.callback.Callback
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
@@ -83,22 +85,13 @@ internal class ParameterMapperTest {
                     // -> Update => RawUpdate
                     Arguments.of(MockParameter(null, typeOf<Update>(), Raw()), mapping, RawUpdate),
                     Arguments.of(MockParameter(null, typeOf<Update?>(), Raw()), mapping, RawUpdate),
-                    // -> Message => RawMessage (non-null only on @OnMessage)
-                    if (mapping is OnMessage) Arguments.of(
-                        MockParameter(null, typeOf<Message>(), Raw()),
-                        mapping,
-                        RawMessage
-                    )
-                    else Arguments.of(MockParameter(null, typeOf<Message>(), Raw()), mapping, null),
-                    Arguments.of(MockParameter(null, typeOf<Message?>(), Raw()), mapping, RawMessage, null),
+                    // -> Message => RawMessage (non-null only on @OnMessage),
+                    Arguments.of(MockParameter(null, typeOf<Message>(), Raw()), mapping, (mapping as? OnMessage)?.let{RawMessage}),
+                    Arguments.of(MockParameter(null, typeOf<Message>(), Raw(true)), mapping, RawMessage),
+                    Arguments.of(MockParameter(null, typeOf<Message?>(), Raw()), mapping, RawMessage),
                     // -> CallbackQuery => RawCallback (non-null only on @OnCallback)
-                    if (mapping is OnCallback) Arguments.of(
-                        MockParameter(null, typeOf<CallbackQuery>(), Raw()),
-                        mapping,
-                        RawCallback,
-                        null
-                    )
-                    else Arguments.of(MockParameter(null, typeOf<CallbackQuery>(), Raw()), mapping, null),
+                    Arguments.of(MockParameter(null, typeOf<CallbackQuery>(), Raw()), mapping, (mapping as? OnCallback)?.let{RawCallback}),
+                    Arguments.of(MockParameter(null, typeOf<CallbackQuery>(), Raw(true)), mapping, RawCallback),
                     Arguments.of(MockParameter(null, typeOf<CallbackQuery?>(), Raw()), mapping, RawCallback),
                     // unannotated parameters of different types:
                     // -> String => named group
@@ -108,12 +101,11 @@ internal class ParameterMapperTest {
                     Arguments.of(MockParameter(null, typeOf<String>(), null), mapping, null),
                     Arguments.of(MockParameter(null, typeOf<String?>(), null), mapping, null),
                     // -> Principal => TypedPrincipal
-                    Arguments.of(
-                        MockParameter("user", typeOf<Principal>(), null), mapping, TypedPrincipal(typeOf<Principal>())
-                    ),
-                    Arguments.of(
-                        MockParameter("user", typeOf<Principal?>(), null), mapping, TypedPrincipal(typeOf<Principal?>())
-                    ),
+                    Arguments.of(MockParameter("user", typeOf<Principal>(), null), mapping, TypedPrincipal(typeOf<Principal>())),
+                    Arguments.of(MockParameter("user", typeOf<Principal?>(), null), mapping, TypedPrincipal(typeOf<Principal?>())),
+                    // -> UpdateContext => ExplicitContext
+                    Arguments.of(MockParameter("context", typeOf<UpdateContext>(), null), mapping, ExplicitContext),
+                    Arguments.of(MockParameter("context", typeOf<UpdateContext?>(), null), mapping, ExplicitContext),
                 )
             }.stream()
     }

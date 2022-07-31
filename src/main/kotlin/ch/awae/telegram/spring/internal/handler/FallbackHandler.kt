@@ -3,6 +3,7 @@ package ch.awae.telegram.spring.internal.handler
 import ch.awae.telegram.spring.annotation.Authorized
 import ch.awae.telegram.spring.annotation.mapping.FallbackMapping
 import ch.awae.telegram.spring.api.Principal
+import ch.awae.telegram.spring.api.UpdateContext
 import ch.awae.telegram.spring.internal.BotControllerBinding
 import ch.awae.telegram.spring.internal.ParameterMapper
 import ch.awae.telegram.spring.internal.param.*
@@ -25,8 +26,8 @@ class FallbackHandler(
 
     override fun isApplicable(update: Update): Boolean = true
 
-    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding) {
-        val parameters = ParameterMapper.buildParameterList(parameterMapping, bean, principal, update, null)
+    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding, context: UpdateContext) {
+        val parameters = ParameterMapper.buildParameterList(parameterMapping, bean, context, null)
         val result = function.call(*parameters.toTypedArray())
         binding.processResponse(uuid, update, result, annotation.linkResponse)
     }

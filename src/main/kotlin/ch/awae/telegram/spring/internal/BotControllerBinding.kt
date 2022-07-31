@@ -35,7 +35,9 @@ class BotControllerBinding(
             logger.info("$uuid: processing update $json")
             val principal = extractUserId(update)?.let { telegramBotConfiguration.resolvePrincipal(it) }
 
-            if (!telegramBotConfiguration.onUpdate(update, principal, this)) {
+            val context = UpdateContext(this, principal, update)
+
+            if (!telegramBotConfiguration.onUpdate(update, context)) {
                 logger.info("$uuid: skipping processing due to onUpdate result")
                 return
             }
@@ -52,27 +54,27 @@ class BotControllerBinding(
             if (authorizedCandidates.isEmpty() && candidates.isNotEmpty()) {
                 logger.warning("$uuid: unauthorized access matching one of the following handlers:")
                 candidates.forEach { logger.warning("$uuid: - $it") }
-                telegramBotConfiguration.onUnauthorizedAccess(update, principal, this)
+                telegramBotConfiguration.onUnauthorizedAccess(update, context)
             } else if (authorizedCandidates.isNotEmpty()) {
-                invokeHandler(uuid, authorizedCandidates.first(), update, principal)
+                invokeHandler(uuid, authorizedCandidates.first(), update, principal, context)
             } else if (fallbackHandler != null && fallbackHandler.isAuthorized(principal)) {
-                invokeHandler(uuid, fallbackHandler, update, principal)
+                invokeHandler(uuid, fallbackHandler, update, principal, context)
             } else if (fallbackHandler != null) {
                 logger.warning("$uuid: unauthorized access to fallback handler")
                 authorizedCandidates.forEach { logger.warning("$uuid: - $it") }
-                telegramBotConfiguration.onUnauthorizedAccess(update, principal, this)
+                telegramBotConfiguration.onUnauthorizedAccess(update,context)
             } else {
                 logger.info("$uuid: no handler found")
-                telegramBotConfiguration.onNoHandler(update, principal, this)
+                telegramBotConfiguration.onNoHandler(update, context)
             }
         } catch (e: Exception) {
             logger.log(Level.SEVERE, e.toString(), e)
         }
     }
 
-    private fun invokeHandler(uuid: UUID, handler: Handler, update: Update, principal: Principal?) {
-        if (telegramBotConfiguration.onAuthorizedAccess(update, principal, this)) {
-            handler.invoke(uuid, update, principal, this)
+    private fun invokeHandler(uuid: UUID, handler: Handler, update: Update, principal: Principal?, context: UpdateContext) {
+        if (telegramBotConfiguration.onAuthorizedAccess(update, context)) {
+            handler.invoke(uuid, update, principal, this, context)
         } else {
             logger.info("$uuid: skipping processing due to onAuthorizedAccess result")
         }

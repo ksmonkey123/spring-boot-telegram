@@ -3,6 +3,7 @@ package ch.awae.telegram.spring.internal.handler
 import ch.awae.telegram.spring.annotation.Authorized
 import ch.awae.telegram.spring.annotation.mapping.OnCallback
 import ch.awae.telegram.spring.api.Principal
+import ch.awae.telegram.spring.api.UpdateContext
 import ch.awae.telegram.spring.internal.BotControllerBinding
 import ch.awae.telegram.spring.internal.ParameterMapper
 import ch.awae.telegram.spring.internal.param.*
@@ -33,9 +34,9 @@ class CallbackHandler(
 
     override fun isApplicable(update: Update): Boolean = matchText(update) != null
 
-    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding) {
+    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding, context: UpdateContext) {
 
-        val parameters = ParameterMapper.buildParameterList(parameterMapping, bean, principal, update, matchText(update))
+        val parameters = ParameterMapper.buildParameterList(parameterMapping, bean, context, matchText(update))
         val result = function.call(*parameters.toTypedArray())
 
         if (!annotation.keepKeyboard) {

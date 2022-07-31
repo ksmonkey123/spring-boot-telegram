@@ -2,13 +2,14 @@ package ch.awae.telegram.spring.internal.handler
 
 import ch.awae.telegram.spring.annotation.Authorized
 import ch.awae.telegram.spring.api.Principal
+import ch.awae.telegram.spring.api.UpdateContext
 import ch.awae.telegram.spring.internal.BotControllerBinding
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.util.UUID
 
 interface Handler {
     fun isApplicable(update: Update): Boolean
-    fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding)
+    fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding, context: UpdateContext)
     val priority: Int
     val classLevelAuth: Authorized?
     val functionLevelAuth: Authorized?

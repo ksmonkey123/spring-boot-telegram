@@ -6,6 +6,7 @@ import ch.awae.telegram.spring.annotation.param.Group
 import ch.awae.telegram.spring.annotation.param.Raw
 import ch.awae.telegram.spring.annotation.param.Text
 import ch.awae.telegram.spring.api.Principal
+import ch.awae.telegram.spring.api.UpdateContext
 import ch.awae.telegram.spring.internal.param.*
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery
 import org.telegram.telegrambots.meta.api.objects.Message
@@ -32,8 +33,8 @@ object ParameterMapper {
             is Raw -> when (type) {
                 // nonnull raw parameters are not always allowed
                 typeOf<Update>() -> RawUpdate
-                typeOf<Message>() -> if (mappingAnnotation is OnMessage) RawMessage else throw InitializationException("no raw message available")
-                typeOf<CallbackQuery>() -> if (mappingAnnotation is OnCallback) RawCallback else throw InitializationException(
+                typeOf<Message>() -> if (mappingAnnotation is OnMessage || annotation.optional) RawMessage else throw InitializationException("no raw message available")
+                typeOf<CallbackQuery>() -> if (mappingAnnotation is OnCallback || annotation.optional) RawCallback else throw InitializationException(
                     "no raw callbackQuery available"
                 )
                 // optional raw parameters are always allowed
@@ -45,6 +46,7 @@ object ParameterMapper {
             null -> when {
                 type.isSubtypeOf(typeOf<String?>()) && name != null -> NamedGroup(name)
                 type.isSubtypeOf(typeOf<Principal?>()) -> TypedPrincipal(type)
+                type.isSubtypeOf(typeOf<UpdateContext?>()) -> ExplicitContext
                 else -> throw InitializationException("could not determine parameter mapping for parameter $param")
             }
             else -> throw InitializationException("could not determine parameter mapping for parameter $param")
@@ -63,8 +65,7 @@ object ParameterMapper {
     fun buildParameterList(
         parameterMapping: List<ParameterMapping>,
         bean: Any, // the @BotController bean
-        principal: Principal?, // the user principal
-        update: Update, // the raw Update object. message and callbackQuery are extracted from this
+        context: UpdateContext,
         match: MatchResult?, // the match result where regex groups should be extracted from
     ) : List<Any?> {
 
@@ -73,10 +74,11 @@ object ParameterMapper {
             when (it) {
                 is IndexedGroup -> runCatching { match?.groups?.get(it.index)?.value }.getOrNull()
                 is NamedGroup -> runCatching { match?.groups?.get(it.name)?.value }.getOrNull()
-                is RawUpdate -> update
-                is RawMessage -> update.message
-                is RawCallback -> update.callbackQuery
-                is TypedPrincipal -> it.filterType(principal)
+                is RawUpdate -> context.update
+                is RawMessage -> context.update.message
+                is RawCallback -> context.update.callbackQuery
+                is TypedPrincipal -> it.filterType(context.principal)
+                is ExplicitContext -> context
             }
         }
 
