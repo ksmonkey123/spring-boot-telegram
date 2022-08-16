@@ -18,6 +18,13 @@ abstract class TelegramBotConfiguration {
 
     open fun resolvePrincipal(userId: Long) : Principal? = AnonymousPrincipal(userId)
 
+    /**
+     * construct a request context. the default implementation constructs a SimpleContext
+     */
+    open fun buildUpdateContext(bot: AbsSender, principal: Principal?, update: Update): UpdateContext {
+        return SimpleContext(bot, principal, update)
+    }
+
     /** called whenever an authorization error occurs - i.e. no authorized handler was found for an update */
     open fun onUnauthorizedAccess(update: Update, context: UpdateContext) {}
 

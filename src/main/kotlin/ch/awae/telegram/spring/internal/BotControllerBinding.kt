@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
-import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 import java.io.Serializable
@@ -35,7 +34,7 @@ class BotControllerBinding(
             logger.info("$uuid: processing update $json")
             val principal = extractUserId(update)?.let { telegramBotConfiguration.resolvePrincipal(it) }
 
-            val context = UpdateContext(this, principal, update)
+            val context = telegramBotConfiguration.buildUpdateContext(this, principal, update)
 
             if (!telegramBotConfiguration.onUpdate(update, context)) {
                 logger.info("$uuid: skipping processing due to onUpdate result")

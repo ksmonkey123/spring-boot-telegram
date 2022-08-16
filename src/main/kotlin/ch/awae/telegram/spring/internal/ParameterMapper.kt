@@ -46,7 +46,7 @@ object ParameterMapper {
             null -> when {
                 type.isSubtypeOf(typeOf<String?>()) && name != null -> NamedGroup(name)
                 type.isSubtypeOf(typeOf<Principal?>()) -> TypedPrincipal(type)
-                type.isSubtypeOf(typeOf<UpdateContext?>()) -> ExplicitContext
+                type.isSubtypeOf(typeOf<UpdateContext?>()) -> TypedContext(type)
                 else -> throw InitializationException("could not determine parameter mapping for parameter $param")
             }
             else -> throw InitializationException("could not determine parameter mapping for parameter $param")
@@ -78,7 +78,7 @@ object ParameterMapper {
                 is RawMessage -> context.update.message
                 is RawCallback -> context.update.callbackQuery
                 is TypedPrincipal -> it.filterType(context.principal)
-                is ExplicitContext -> context
+                is TypedContext -> it.filterType(context)
             }
         }
 

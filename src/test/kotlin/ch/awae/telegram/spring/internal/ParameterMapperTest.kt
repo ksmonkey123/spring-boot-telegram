@@ -18,7 +18,6 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.util.stream.Stream
-import javax.security.auth.callback.Callback
 import kotlin.reflect.KParameter
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
@@ -104,8 +103,8 @@ internal class ParameterMapperTest {
                     Arguments.of(MockParameter("user", typeOf<Principal>(), null), mapping, TypedPrincipal(typeOf<Principal>())),
                     Arguments.of(MockParameter("user", typeOf<Principal?>(), null), mapping, TypedPrincipal(typeOf<Principal?>())),
                     // -> UpdateContext => ExplicitContext
-                    Arguments.of(MockParameter("context", typeOf<UpdateContext>(), null), mapping, ExplicitContext),
-                    Arguments.of(MockParameter("context", typeOf<UpdateContext?>(), null), mapping, ExplicitContext),
+                    Arguments.of(MockParameter("context", typeOf<UpdateContext>(), null), mapping, TypedContext(typeOf<UpdateContext>())),
+                    Arguments.of(MockParameter("context", typeOf<UpdateContext?>(), null), mapping, TypedContext(typeOf<UpdateContext?>())),
                 )
             }.stream()
     }
