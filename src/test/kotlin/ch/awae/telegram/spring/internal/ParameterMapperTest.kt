@@ -103,8 +103,8 @@ internal class ParameterMapperTest {
                     Arguments.of(MockParameter("user", typeOf<Principal>(), null), mapping, TypedPrincipal(typeOf<Principal>())),
                     Arguments.of(MockParameter("user", typeOf<Principal?>(), null), mapping, TypedPrincipal(typeOf<Principal?>())),
                     // -> UpdateContext => ExplicitContext
-                    Arguments.of(MockParameter("context", typeOf<UpdateContext>(), null), mapping, TypedContext(typeOf<UpdateContext>())),
-                    Arguments.of(MockParameter("context", typeOf<UpdateContext?>(), null), mapping, TypedContext(typeOf<UpdateContext?>())),
+                    Arguments.of(MockParameter("context", typeOf<UpdateContext<*>>(), null), mapping, TypedContext(typeOf<UpdateContext<*>>())),
+                    Arguments.of(MockParameter("context", typeOf<UpdateContext<*>?>(), null), mapping, TypedContext(typeOf<UpdateContext<*>?>())),
                 )
             }.stream()
     }

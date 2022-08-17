@@ -5,7 +5,7 @@ import ch.awae.telegram.spring.annotation.BotController
 import ch.awae.telegram.spring.annotation.mapping.FallbackMapping
 import ch.awae.telegram.spring.annotation.mapping.OnCallback
 import ch.awae.telegram.spring.annotation.mapping.OnMessage
-import ch.awae.telegram.spring.api.IBotCredentials
+import ch.awae.telegram.spring.api.BotCredentials
 import ch.awae.telegram.spring.api.TelegramBotConfiguration
 import ch.awae.telegram.spring.internal.handler.CallbackHandler
 import ch.awae.telegram.spring.internal.handler.FallbackHandler
@@ -29,7 +29,7 @@ import kotlin.reflect.jvm.jvmName
 @Configuration
 class BotControllerBinder(
     val botsApi: TelegramBotsApi,
-    val telegramBotConfiguration: TelegramBotConfiguration,
+    val telegramBotConfiguration: TelegramBotConfiguration<*,*>,
     val senderRegistry: MapBasedSenderRegistry,
     val appContext: ApplicationContext,
 ) {
@@ -56,7 +56,7 @@ class BotControllerBinder(
 
     }
 
-    private fun getBindings(): Map<String, BotControllerBinding> {
+    private fun getBindings(): Map<String, BotControllerBinding<*,*>> {
         val bots = appContext.getBeansWithAnnotation<BotController>()
             .map { (beanName, bean) ->
                 val annotation = appContext.findAnnotationOnBean<BotController>(beanName)
@@ -78,7 +78,7 @@ class BotControllerBinder(
         }
     }
 
-    private fun getBinding(botName: String, config: IBotCredentials, beans: List<Any>): BotControllerBinding {
+    private fun getBinding(botName: String, config: BotCredentials, beans: List<Any>): BotControllerBinding<*,*> {
         val allHandlers = beans.flatMap { getHandlersForBean(it) }
 
         logger.info("loaded ${allHandlers.size} handlers(s) for bot '${printableName(botName)}':")
@@ -133,6 +133,7 @@ class BotControllerBinder(
                     beanAuthAnnotation,
                     authAnnotation
                 )
+
             is OnCallback ->
                 CallbackHandler(
                     bean,
@@ -143,6 +144,7 @@ class BotControllerBinder(
                     beanAuthAnnotation,
                     authAnnotation
                 )
+
             is FallbackMapping -> {
                 FallbackHandler(
                     bean,
@@ -153,6 +155,7 @@ class BotControllerBinder(
                     authAnnotation
                 )
             }
+
             else -> null
         }
     }

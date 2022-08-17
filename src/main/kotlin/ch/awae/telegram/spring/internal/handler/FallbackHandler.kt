@@ -26,7 +26,7 @@ class FallbackHandler(
 
     override fun isApplicable(update: Update): Boolean = true
 
-    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding, context: UpdateContext) {
+    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding<*,*>, context: UpdateContext<*>) {
         val parameters = ParameterMapper.buildParameterList(parameterMapping, bean, context, null)
         val result = function.call(*parameters.toTypedArray())
         binding.processResponse(uuid, update, result, annotation.linkResponse)

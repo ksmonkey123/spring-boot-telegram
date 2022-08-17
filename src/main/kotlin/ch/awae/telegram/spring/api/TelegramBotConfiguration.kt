@@ -1,6 +1,5 @@
 package ch.awae.telegram.spring.api
 
-import ch.awae.telegram.spring.internal.AnonymousPrincipal
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.telegram.telegrambots.meta.TelegramBotsApi
@@ -9,24 +8,22 @@ import org.telegram.telegrambots.meta.bots.AbsSender
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
 
 @ComponentScan("ch.awae.telegram.spring")
-abstract class TelegramBotConfiguration {
+abstract class TelegramBotConfiguration<P: Principal, C: UpdateContext<P>> {
 
     @Bean
     open fun getApi() = TelegramBotsApi(DefaultBotSession::class.java)
 
-    abstract fun getBotCredentials(botName: String) : IBotCredentials
+    abstract fun getBotCredentials(botName: String) : BotCredentials
 
-    open fun resolvePrincipal(userId: Long) : Principal? = AnonymousPrincipal(userId)
+    abstract fun resolvePrincipal(userId: Long) : P?
 
     /**
      * construct a request context. the default implementation constructs a SimpleContext
      */
-    open fun buildUpdateContext(bot: AbsSender, principal: Principal?, update: Update): UpdateContext {
-        return SimpleContext(bot, principal, update)
-    }
+    abstract fun buildUpdateContext(bot: AbsSender, update: Update, principal: P?): C
 
     /** called whenever an authorization error occurs - i.e. no authorized handler was found for an update */
-    open fun onUnauthorizedAccess(update: Update, context: UpdateContext) {}
+    open fun onUnauthorizedAccess(update: Update, context: C) {}
 
     /**
      * called when a new update is being processed. this is called at the very beginning, before a handler has been
@@ -36,7 +33,7 @@ abstract class TelegramBotConfiguration {
      * This function also serves as a filter for the further execution: if 'false' is returned or an exception is
      * thrown, the processing of the update is terminated.
      */
-    open fun onUpdate(update: Update, context: UpdateContext) : Boolean = true
+    open fun onUpdate(update: Update, context: C) : Boolean = true
 
     /**
      * called when the handler for a message has been determined and authorization has been verified.
@@ -45,11 +42,11 @@ abstract class TelegramBotConfiguration {
      * This function also serves as a filter for the handler execution: if 'false' is returned or an exception is
      * thrown, the processing of this update is terminated and no handlers are called.
      */
-    open fun onAuthorizedAccess(update: Update, context: UpdateContext) : Boolean = true
+    open fun onAuthorizedAccess(update: Update, context: C) : Boolean = true
 
     /**
      * called when no handler has been found
      */
-    open fun onNoHandler(update: Update, context: UpdateContext) {}
+    open fun onNoHandler(update: Update, context: C) {}
 
 }

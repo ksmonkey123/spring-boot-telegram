@@ -46,7 +46,7 @@ object ParameterMapper {
             null -> when {
                 type.isSubtypeOf(typeOf<String?>()) && name != null -> NamedGroup(name)
                 type.isSubtypeOf(typeOf<Principal?>()) -> TypedPrincipal(type)
-                type.isSubtypeOf(typeOf<UpdateContext?>()) -> TypedContext(type)
+                type.isSubtypeOf(typeOf<UpdateContext<*>?>()) -> TypedContext(type)
                 else -> throw InitializationException("could not determine parameter mapping for parameter $param")
             }
             else -> throw InitializationException("could not determine parameter mapping for parameter $param")
@@ -65,7 +65,7 @@ object ParameterMapper {
     fun buildParameterList(
         parameterMapping: List<ParameterMapping>,
         bean: Any, // the @BotController bean
-        context: UpdateContext,
+        context: UpdateContext<*>,
         match: MatchResult?, // the match result where regex groups should be extracted from
     ) : List<Any?> {
 

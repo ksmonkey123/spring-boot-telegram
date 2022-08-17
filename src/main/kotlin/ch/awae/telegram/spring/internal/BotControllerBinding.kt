@@ -10,16 +10,16 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.User
 import java.io.Serializable
-import java.util.UUID
+import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
 import kotlin.reflect.jvm.jvmName
 
-class BotControllerBinding(
-        private val configuration: IBotCredentials,
-        private val handlers: List<Handler>,
-        private val fallbackHandler: FallbackHandler?,
-        private val telegramBotConfiguration: TelegramBotConfiguration,
+class BotControllerBinding<P: Principal, C : UpdateContext<P>>(
+    private val configuration: BotCredentials,
+    private val handlers: List<Handler>,
+    private val fallbackHandler: FallbackHandler?,
+    private val telegramBotConfiguration: TelegramBotConfiguration<P,C>,
 ) : TelegramLongPollingBot() {
 
     private val logger = Logger.getLogger(BotControllerBinding::class.jvmName)
@@ -34,7 +34,7 @@ class BotControllerBinding(
             logger.info("$uuid: processing update $json")
             val principal = extractUserId(update)?.let { telegramBotConfiguration.resolvePrincipal(it) }
 
-            val context = telegramBotConfiguration.buildUpdateContext(this, principal, update)
+            val context = telegramBotConfiguration.buildUpdateContext(this, update, principal)
 
             if (!telegramBotConfiguration.onUpdate(update, context)) {
                 logger.info("$uuid: skipping processing due to onUpdate result")
@@ -71,7 +71,7 @@ class BotControllerBinding(
         }
     }
 
-    private fun invokeHandler(uuid: UUID, handler: Handler, update: Update, principal: Principal?, context: UpdateContext) {
+    private fun invokeHandler(uuid: UUID, handler: Handler, update: Update, principal: P?, context: C) {
         if (telegramBotConfiguration.onAuthorizedAccess(update, context)) {
             handler.invoke(uuid, update, principal, this, context)
         } else {

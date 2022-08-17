@@ -9,7 +9,7 @@ import java.util.UUID
 
 interface Handler {
     fun isApplicable(update: Update): Boolean
-    fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding, context: UpdateContext)
+    fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding<*,*>, context: UpdateContext<*>)
     val priority: Int
     val classLevelAuth: Authorized?
     val functionLevelAuth: Authorized?
