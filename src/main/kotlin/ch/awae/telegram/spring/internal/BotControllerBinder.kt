@@ -84,6 +84,9 @@ class BotControllerBinder(
         logger.info("loaded ${allHandlers.size} handlers(s) for bot '${printableName(botName)}':")
         allHandlers.forEach {
             logger.info(" - $it")
+            it.parameterMapping.forEachIndexed { index, mapping ->
+                logger.config("    - parameter $index: $mapping")
+            }
         }
 
         val normalHandlers = allHandlers.filterNot { it is FallbackHandler }

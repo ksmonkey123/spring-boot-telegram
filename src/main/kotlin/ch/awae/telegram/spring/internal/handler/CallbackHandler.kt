@@ -16,7 +16,7 @@ class CallbackHandler(
     private val bean: Any,
     private val regex: Regex,
     private val function: KFunction<*>,
-    private val parameterMapping: List<ParameterMapping>,
+    override val parameterMapping: List<ParameterMapping>,
     private val annotation: OnCallback,
     override val classLevelAuth: Authorized?,
     override val functionLevelAuth: Authorized?,

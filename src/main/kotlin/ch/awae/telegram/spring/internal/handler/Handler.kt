@@ -4,6 +4,7 @@ import ch.awae.telegram.spring.annotation.Authorized
 import ch.awae.telegram.spring.api.Principal
 import ch.awae.telegram.spring.api.UpdateContext
 import ch.awae.telegram.spring.internal.BotControllerBinding
+import ch.awae.telegram.spring.internal.param.ParameterMapping
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.util.UUID
 
@@ -13,6 +14,7 @@ interface Handler {
     val priority: Int
     val classLevelAuth: Authorized?
     val functionLevelAuth: Authorized?
+    val parameterMapping: List<ParameterMapping>
 
     fun isAuthorized(principal: Principal?) : Boolean {
         if (principal == null) {

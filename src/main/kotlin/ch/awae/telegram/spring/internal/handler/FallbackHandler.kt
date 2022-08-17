@@ -14,7 +14,7 @@ import kotlin.reflect.KFunction
 class FallbackHandler(
         private val bean: Any,
         private val function: KFunction<*>,
-        private val parameterMapping: List<ParameterMapping>,
+        override val parameterMapping: List<ParameterMapping>,
         private val annotation: FallbackMapping,
         override val classLevelAuth: Authorized?,
         override val functionLevelAuth: Authorized?,
