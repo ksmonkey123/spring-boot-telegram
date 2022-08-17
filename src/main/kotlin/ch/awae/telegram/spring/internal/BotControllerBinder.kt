@@ -85,7 +85,7 @@ class BotControllerBinder(
         allHandlers.forEach {
             logger.info(" - $it")
             it.parameterMapping.forEachIndexed { index, mapping ->
-                logger.config("    - parameter $index: $mapping")
+                logger.info("    - parameter $index: $mapping")
             }
         }
 
