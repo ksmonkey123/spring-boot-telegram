@@ -39,5 +39,5 @@ open class UpdateCallbackHandler<P: Principal, C: UpdateContext<P>> {
     /**
      * called when the update processing is finished, just before a potential response has been sent
      */
-    open fun onUpdateCompleted(updateUpdate: Update, context: C, outcome: ProcessingOutcome, result: Result<BotApiMethod<out Serializable>?>) {}
+    open fun onUpdateCompleted(update: Update, context: C, outcome: ProcessingOutcome, result: Result<BotApiMethod<out Serializable>?>) {}
 }
