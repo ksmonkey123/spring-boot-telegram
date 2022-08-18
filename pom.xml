@@ -10,7 +10,7 @@
 
     <groupId>ch.awae</groupId>
     <artifactId>spring-boot-telegram</artifactId>
-    <version>0.6.2</version>
+    <version>0.7.0</version>
 
     <name>spring-boot-telegram</name>
     <description>spring-boot-telegram</description>

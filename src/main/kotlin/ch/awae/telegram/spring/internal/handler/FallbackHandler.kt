@@ -7,7 +7,9 @@ import ch.awae.telegram.spring.api.UpdateContext
 import ch.awae.telegram.spring.internal.BotControllerBinding
 import ch.awae.telegram.spring.internal.ParameterMapper
 import ch.awae.telegram.spring.internal.param.*
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod
 import org.telegram.telegrambots.meta.api.objects.Update
+import java.io.Serializable
 import java.util.UUID
 import kotlin.reflect.KFunction
 
@@ -26,10 +28,10 @@ class FallbackHandler(
 
     override fun isApplicable(update: Update): Boolean = true
 
-    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding<*,*>, context: UpdateContext<*>) {
+    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding<*,*>, context: UpdateContext<*>): BotApiMethod<out Serializable>? {
         val parameters = ParameterMapper.buildParameterList(parameterMapping, bean, context, null)
         val result = function.call(*parameters.toTypedArray())
-        binding.processResponse(uuid, update, result, annotation.linkResponse)
+        return binding.processResponse(uuid, update, result, annotation.linkResponse)
     }
 
 }

@@ -4,6 +4,7 @@ import ch.awae.telegram.spring.api.*
 import ch.awae.telegram.spring.internal.handler.FallbackHandler
 import ch.awae.telegram.spring.internal.handler.Handler
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.boot.web.servlet.support.ServletContextApplicationContextInitializer
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
@@ -15,30 +16,42 @@ import java.util.logging.Level
 import java.util.logging.Logger
 import kotlin.reflect.jvm.jvmName
 
-class BotControllerBinding<P: Principal, C : UpdateContext<P>>(
+class BotControllerBinding<P : Principal, C : UpdateContext<P>>(
     private val configuration: BotCredentials,
     private val handlers: List<Handler>,
     private val fallbackHandler: FallbackHandler?,
-    private val telegramBotConfiguration: TelegramBotConfiguration<P,C>,
+    private val telegramBotConfiguration: TelegramBotConfiguration<P, C>,
 ) : TelegramLongPollingBot() {
+
+    private val callbackHandler = telegramBotConfiguration.getUpdateCallbackHandler()
 
     private val logger = Logger.getLogger(BotControllerBinding::class.jvmName)
 
     override fun getBotToken(): String = configuration.token
     override fun getBotUsername(): String = configuration.username
 
+    private fun test(block: () -> Unit): Throwable? = runCatching(block).exceptionOrNull()
+
     override fun onUpdateReceived(update: Update) {
         try {
-            val uuid = UUID.randomUUID()
-            val json = kotlin.runCatching { ObjectMapper().writeValueAsString(update) }.getOrDefault(update.toString())
-            logger.info("$uuid: processing update $json")
-            val principal = extractUserId(update)?.let { telegramBotConfiguration.resolvePrincipal(it) }
+            val result = handleUpdate(update)
+            callbackHandler?.onUpdateCompleted(update, result.first, result.second, result.third)
+        } catch (e: Exception) {
+            logger.log(Level.SEVERE, e.toString(), e)
+        }
+    }
 
-            val context = telegramBotConfiguration.buildUpdateContext(this, update, principal)
+    private fun handleUpdate(update: Update): Triple<C, ProcessingOutcome, Result<BotApiMethod<out Serializable>?>> {
+        val uuid = UUID.randomUUID()
+        val json = kotlin.runCatching { ObjectMapper().writeValueAsString(update) }.getOrDefault(update.toString())
+        logger.info("$uuid: processing update $json")
+        val principal = extractUserId(update)?.let { telegramBotConfiguration.resolvePrincipal(it) }
+        val context = telegramBotConfiguration.buildUpdateContext(this, update, principal)
 
-            if (!telegramBotConfiguration.onUpdate(update, context)) {
-                logger.info("$uuid: skipping processing due to onUpdate result")
-                return
+        try {
+            test { callbackHandler?.onUpdate(update, context) }?.let {
+                logger.info("$uuid: skipping processing due to onUpdate result: $it")
+                return Triple(context, ProcessingOutcome.SKIPPED, Result.failure(it))
             }
 
             val candidates = handlers.filter { it.isApplicable(update) }.sortedBy { it.priority }
@@ -53,42 +66,71 @@ class BotControllerBinding<P: Principal, C : UpdateContext<P>>(
             if (authorizedCandidates.isEmpty() && candidates.isNotEmpty()) {
                 logger.warning("$uuid: unauthorized access matching one of the following handlers:")
                 candidates.forEach { logger.warning("$uuid: - $it") }
-                telegramBotConfiguration.onUnauthorizedAccess(update, context)
+                return Triple(context,
+                    ProcessingOutcome.HANDLER_UNAUTHORIZED,
+                    runCatching { callbackHandler?.onUnauthorizedAccess(update, context) }.map { null })
             } else if (authorizedCandidates.isNotEmpty()) {
-                invokeHandler(uuid, authorizedCandidates.first(), update, principal, context)
+                test { callbackHandler?.onAuthorizedAccess(update, context) }?.let {
+                    logger.info("$uuid: skipping processing due to onAuthorizedAccess result: $it")
+                    return Triple(context, ProcessingOutcome.HANDLER_SKIPPED, Result.failure(it))
+                }
+                return invokeHandler(uuid, authorizedCandidates.first(), update, principal, context).let {
+                    if (it.isFailure) {
+                        Triple(context, ProcessingOutcome.HANDLER_FAILED, it)
+                    } else {
+                        Triple(context, ProcessingOutcome.HANDLER_COMPLETED, it)
+                    }
+                }
             } else if (fallbackHandler != null && fallbackHandler.isAuthorized(principal)) {
-                invokeHandler(uuid, fallbackHandler, update, principal, context)
+                test { callbackHandler?.onAuthorizedAccess(update, context) }?.let {
+                    logger.info("$uuid: skipping processing due to onAuthorizedAccess result: $it")
+                    return Triple(context, ProcessingOutcome.FALLBACK_SKIPPED, Result.failure(it))
+                }
+                return invokeHandler(uuid, fallbackHandler, update, principal, context).let {
+                    if (it.isFailure) {
+                        Triple(context, ProcessingOutcome.HANDLER_FAILED, it)
+                    } else {
+                        Triple(context, ProcessingOutcome.HANDLER_COMPLETED, it)
+                    }
+                }
             } else if (fallbackHandler != null) {
                 logger.warning("$uuid: unauthorized access to fallback handler")
                 authorizedCandidates.forEach { logger.warning("$uuid: - $it") }
-                telegramBotConfiguration.onUnauthorizedAccess(update,context)
+                return Triple(context,
+                    ProcessingOutcome.FALLBACK_UNAUTHORIZED,
+                    runCatching { callbackHandler?.onUnauthorizedAccess(update, context) }.map { null })
             } else {
                 logger.info("$uuid: no handler found")
-                telegramBotConfiguration.onNoHandler(update, context)
+                return Triple(context,
+                    ProcessingOutcome.NO_HANDLER,
+                    runCatching { callbackHandler?.onNoHandler(update, context) }.map { null })
             }
         } catch (e: Exception) {
             logger.log(Level.SEVERE, e.toString(), e)
+            return Triple(context, ProcessingOutcome.FAILED, Result.failure(e))
         }
     }
 
-    private fun invokeHandler(uuid: UUID, handler: Handler, update: Update, principal: P?, context: C) {
-        if (telegramBotConfiguration.onAuthorizedAccess(update, context)) {
-            handler.invoke(uuid, update, principal, this, context)
-        } else {
-            logger.info("$uuid: skipping processing due to onAuthorizedAccess result")
-        }
+    private fun invokeHandler(
+        uuid: UUID,
+        handler: Handler,
+        update: Update,
+        principal: P?,
+        context: C
+    ): Result<BotApiMethod<out Serializable>?> {
+        return runCatching { handler.invoke(uuid, update, principal, this, context) }
     }
 
     override fun <T : Serializable, Method : BotApiMethod<T>> execute(method: Method): T {
         return super.execute(method)
     }
 
-    fun processResponse(uuid: UUID, update: Update, result: Any?, linked: Boolean) {
+    fun processResponse(uuid: UUID, update: Update, result: Any?, linked: Boolean): BotApiMethod<out Serializable>? {
         val message = (update.message ?: update.callbackQuery?.message)!!
 
         result?.takeUnless { it is Unit }?.let {
             logger.info("$uuid: sending response: $it")
-            val response = when (it) {
+            val response: BotApiMethod<out Serializable> = when (it) {
                 is BotApiMethod<*> -> it
                 is Keyboard -> {
                     SendMessage(message.chatId.toString(), it.message).apply {
@@ -98,6 +140,7 @@ class BotControllerBinding<P: Principal, C : UpdateContext<P>>(
                         }
                     }
                 }
+
                 else -> {
                     SendMessage(message.chatId.toString(), it.toString()).apply {
                         if (linked) {
@@ -107,7 +150,9 @@ class BotControllerBinding<P: Principal, C : UpdateContext<P>>(
                 }
             }
             execute(response)
+            return response
         }
+        return null
     }
 
     private fun extractUserId(update: Update): Long? {

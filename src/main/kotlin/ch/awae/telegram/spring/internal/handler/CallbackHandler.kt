@@ -7,8 +7,10 @@ import ch.awae.telegram.spring.api.UpdateContext
 import ch.awae.telegram.spring.internal.BotControllerBinding
 import ch.awae.telegram.spring.internal.ParameterMapper
 import ch.awae.telegram.spring.internal.param.*
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup
 import org.telegram.telegrambots.meta.api.objects.Update
+import java.io.Serializable
 import java.util.UUID
 import kotlin.reflect.KFunction
 
@@ -34,7 +36,7 @@ class CallbackHandler(
 
     override fun isApplicable(update: Update): Boolean = matchText(update) != null
 
-    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding<*,*>, context: UpdateContext<*>) {
+    override fun invoke(uuid: UUID, update: Update, principal: Principal?, binding: BotControllerBinding<*,*>, context: UpdateContext<*>): BotApiMethod<out Serializable>? {
 
         val parameters = ParameterMapper.buildParameterList(parameterMapping, bean, context, matchText(update))
         val result = function.call(*parameters.toTypedArray())
@@ -50,7 +52,7 @@ class CallbackHandler(
             )
         }
 
-        binding.processResponse(uuid, update, result, false)
+        return binding.processResponse(uuid, update, result, false)
     }
 
 }

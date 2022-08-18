@@ -22,31 +22,5 @@ abstract class TelegramBotConfiguration<P: Principal, C: UpdateContext<P>> {
      */
     abstract fun buildUpdateContext(bot: AbsSender, update: Update, principal: P?): C
 
-    /** called whenever an authorization error occurs - i.e. no authorized handler was found for an update */
-    open fun onUnauthorizedAccess(update: Update, context: C) {}
-
-    /**
-     * called when a new update is being processed. this is called at the very beginning, before a handler has been
-     * determined and before any authorization has been performed. The user principal has already been established
-     * at this point, so it is provided as well.
-     *
-     * This function also serves as a filter for the further execution: if 'false' is returned or an exception is
-     * thrown, the processing of the update is terminated.
-     */
-    open fun onUpdate(update: Update, context: C) : Boolean = true
-
-    /**
-     * called when the handler for a message has been determined and authorization has been verified.
-     * The call to this function is performed before the chosen handler is called.
-     *
-     * This function also serves as a filter for the handler execution: if 'false' is returned or an exception is
-     * thrown, the processing of this update is terminated and no handlers are called.
-     */
-    open fun onAuthorizedAccess(update: Update, context: C) : Boolean = true
-
-    /**
-     * called when no handler has been found
-     */
-    open fun onNoHandler(update: Update, context: C) {}
-
+    open fun getUpdateCallbackHandler(): UpdateCallbackHandler<P,C>? = null
 }

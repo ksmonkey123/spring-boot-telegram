@@ -102,7 +102,7 @@ class BotControllerBinder(
         val classes = listOf(bean::class) + bean::class.allSuperclasses
         return classes.flatMap {
             val classAuth = it.findAnnotation<Authorized>()
-            it.functions.map { it to classAuth }
+            it.functions.map { fn -> Pair(fn, classAuth) }
         }.flatMap { (function, classAuth) -> getHandlersForFunction(bean, classAuth, function) }
     }
 
